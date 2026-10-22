@@ -1,0 +1,17 @@
+#!/bin/bash
+dir="${1:-.}"
+
+find "$dir" -type f \( -name '*.c' -o -name '*.js' -o -name '*.py' \) -print0 |
+while IFS= read -r -d '' file; do
+    first=$(head -n 1 "$file")
+    case "$file" in
+        *.py) pattern='^[[:space:]]*#' ;;
+        *)    pattern='^[[:space:]]*(//|/\*)' ;;
+    esac
+
+    if [[ $first =~ $pattern ]]; then
+        echo "$file: comment found"
+    else
+        echo "$file: NO comment"
+    fi
+done

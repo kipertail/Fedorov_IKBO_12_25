@@ -1,0 +1,6 @@
+# Стартовый скрипт: корректные команды
+ls
+ls -l /home
+cd /home/user
+cd ..
+conf-dump

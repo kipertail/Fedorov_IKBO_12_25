@@ -1,0 +1,11 @@
+#!/bin/bash
+if [ $# -lt 1 ]; then
+    echo "Usage: $0 extension [dir]" >&2
+    exit 1
+fi
+
+ext="$1"
+dir="${2:-.}"
+archive="archive_${ext}.tar"
+
+find "$dir" -type f -name "*.${ext}" -print0 | tar -cvf "$archive" --null -T -
