@@ -1,0 +1,35 @@
+digraph dependencies {
+    rankdir=LR;
+    node [shape=box, style=rounded, fontname="Helvetica"];
+    "base-files" [style="rounded,filled", fillcolor="lightblue"];
+    "gawk";
+    "libc6";
+    "libcrypt1";
+    "libgcc-s1";
+    "libgmp10";
+    "libmpfr6";
+    "libreadline8t64";
+    "libsigsegv2";
+    "gcc-14-base";
+    "libtinfo6";
+    "readline-common";
+    "base-files" -> "gawk";
+    "base-files" -> "libc6";
+    "base-files" -> "libcrypt1";
+    "gawk" -> "libc6";
+    "gawk" -> "libgmp10";
+    "gawk" -> "libmpfr6";
+    "gawk" -> "libreadline8t64";
+    "gawk" -> "libsigsegv2";
+    "libc6" -> "libgcc-s1" [color="red", penwidth=2];
+    "libgmp10" -> "libc6";
+    "libmpfr6" -> "libc6";
+    "libmpfr6" -> "libgmp10";
+    "libreadline8t64" -> "readline-common";
+    "libreadline8t64" -> "libc6";
+    "libreadline8t64" -> "libtinfo6";
+    "libsigsegv2" -> "libc6";
+    "libgcc-s1" -> "gcc-14-base";
+    "libgcc-s1" -> "libc6" [color="red", penwidth=2];
+    "libcrypt1" -> "libc6";
+}

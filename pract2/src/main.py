@@ -5,6 +5,7 @@ import sys
 
 import apt_repo
 import graph_file
+import visualize
 from graph import DependencyGraph
 
 MIN_DEPTH = 1
@@ -138,6 +139,13 @@ def main(argv=None):
         fail([str(err)])
     graph = DependencyGraph(get_deps, args.max_depth).build(args.package)
     print_graph(args, graph)
+    try:
+        dot_file = visualize.save(graph, args.package, args.output,
+                                  args.reverse)
+    except (OSError, visualize.VisualizationError) as err:
+        fail([str(err)])
+    print(f"Описание графа Graphviz: {dot_file}")
+    print(f"Изображение графа: {args.output}")
 
 
 if __name__ == "__main__":
