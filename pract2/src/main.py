@@ -3,6 +3,9 @@ import os
 import re
 import sys
 
+import apt_repo
+import graph_file
+
 MIN_DEPTH = 1
 DEFAULT_DEPTH = 3
 DEFAULT_OUTPUT = "graph.svg"
@@ -86,19 +89,44 @@ def validate(args):
     return [error for error in checks if error]
 
 
-def print_config(args):
-    for key, value in vars(args).items():
-        print(f"{key}={value}")
+def get_dependencies(args):
+    if args.test_mode:
+        return graph_file.direct_dependencies(args.repo, args.package)
+    return apt_repo.direct_dependencies(args.repo, args.package,
+                                        args.version)
+
+
+def format_dependency(dep):
+    name, op, version = dep
+    return f"{name} ({op} {version})" if op else name
+
+
+def print_dependencies(args, groups):
+    title = args.package if args.test_mode else \
+        f"{args.package} {args.version}"
+    print(f"Прямые зависимости {title}:")
+    if not groups:
+        print("  (нет зависимостей)")
+    for group in groups:
+        print("  " + " | ".join(format_dependency(dep) for dep in group))
+
+
+def fail(messages):
+    for message in messages:
+        print(f"Ошибка: {message}", file=sys.stderr)
+    sys.exit(1)
 
 
 def main(argv=None):
     args = parse_args(argv)
     errors = validate(args)
     if errors:
-        for error in errors:
-            print(f"Ошибка: {error}", file=sys.stderr)
-        sys.exit(1)
-    print_config(args)
+        fail(errors)
+    try:
+        groups = get_dependencies(args)
+    except apt_repo.RepoError as err:
+        fail([str(err)])
+    print_dependencies(args, groups)
 
 
 if __name__ == "__main__":

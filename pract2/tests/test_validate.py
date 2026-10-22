@@ -1,8 +1,6 @@
 import os
-import sys
-import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+import pytest
 
 from main import (validate_depth, validate_output, validate_package,
                   validate_repo, validate_version)
@@ -10,50 +8,55 @@ from main import (validate_depth, validate_output, validate_package,
 TEST_REPO = os.path.join(os.path.dirname(__file__), "graph1.txt")
 
 
-class TestValidatePackage(unittest.TestCase):
-
-    def test_valid_name(self):
-        self.assertIsNone(validate_package("libc6", False))
-        self.assertIsNone(validate_package("g++-12", False))
-
-    def test_invalid_name(self):
-        self.assertIsNotNone(validate_package("Curl", False))
-        self.assertIsNotNone(validate_package("-abc", False))
-
-    def test_test_mode_name(self):
-        self.assertIsNone(validate_package("A", True))
-        self.assertIsNotNone(validate_package("a", True))
+@pytest.mark.parametrize("name", ["libc6", "g++-12", "python3.12"])
+def test_package_valid(name):
+    assert validate_package(name, False) is None
 
 
-class TestValidateRepo(unittest.TestCase):
-
-    def test_url(self):
-        self.assertIsNone(validate_repo("https://example.com", False))
-        self.assertIsNotNone(validate_repo("example.com", False))
-
-    def test_test_file(self):
-        self.assertIsNone(validate_repo(TEST_REPO, True))
-        self.assertIsNotNone(validate_repo("missing.txt", True))
+@pytest.mark.parametrize("name", ["Curl", "-abc", "a", "bad!"])
+def test_package_invalid(name):
+    assert validate_package(name, False) is not None
 
 
-class TestValidateOther(unittest.TestCase):
-
-    def test_version(self):
-        self.assertIsNone(validate_version("1:2.3-4ubuntu1", False))
-        self.assertIsNotNone(validate_version("", False))
-        self.assertIsNotNone(validate_version("1 0", False))
-        self.assertIsNone(validate_version("", True))
-
-    def test_output(self):
-        self.assertIsNone(validate_output("graph.svg"))
-        self.assertIsNotNone(validate_output("graph.png"))
-        self.assertIsNotNone(validate_output("nodir/graph.svg"))
-
-    def test_depth(self):
-        self.assertIsNone(validate_depth(1))
-        self.assertIsNotNone(validate_depth(0))
-        self.assertIsNotNone(validate_depth(-5))
+def test_package_test_mode():
+    assert validate_package("A", True) is None
+    assert validate_package("a", True) is not None
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_repo_url():
+    assert validate_repo("https://example.com", False) is None
+    assert validate_repo("example.com", False) is not None
+
+
+def test_repo_test_file():
+    assert validate_repo(TEST_REPO, True) is None
+    assert validate_repo("missing.txt", True) is not None
+
+
+@pytest.mark.parametrize("version", ["1:2.3-4ubuntu1", "8.5.0-2ubuntu10"])
+def test_version_valid(version):
+    assert validate_version(version, False) is None
+
+
+@pytest.mark.parametrize("version", ["", "1 0", "1,0"])
+def test_version_invalid(version):
+    assert validate_version(version, False) is not None
+
+
+def test_version_optional_in_test_mode():
+    assert validate_version("", True) is None
+
+
+@pytest.mark.parametrize("output, ok", [
+    ("graph.svg", True),
+    ("graph.png", False),
+    ("nodir/graph.svg", False),
+])
+def test_output(output, ok):
+    assert (validate_output(output) is None) == ok
+
+
+@pytest.mark.parametrize("depth, ok", [(1, True), (5, True),
+                                       (0, False), (-5, False)])
+def test_depth(depth, ok):
+    assert (validate_depth(depth) is None) == ok
