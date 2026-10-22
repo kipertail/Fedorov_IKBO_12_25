@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 text" >&2
+    exit 1
+fi
+
+text="$*"
+border=$(printf '%*s' "$(( ${#text} + 2 ))" '' | tr ' ' '-')
+
+printf '+%s+\n' "$border"
+printf '| %s |\n' "$text"
+printf '+%s+\n' "$border"

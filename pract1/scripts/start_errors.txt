@@ -1,0 +1,8 @@
+# Стартовый скрипт с ошибками: ошибочные строки пропускаются
+ls -a
+foo bar
+cd /tmp
+conf-dump extra
+exit 1 2
+unknown-command
+ls после ошибок

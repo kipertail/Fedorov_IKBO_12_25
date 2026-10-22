@@ -1,0 +1,12 @@
+#!/bin/bash
+if [ $# -ne 2 ]; then
+    echo "Usage: $0 input output" >&2
+    exit 1
+fi
+
+if [ "$1" = "$2" ]; then
+    echo "Error: input and output must differ" >&2
+    exit 1
+fi
+
+sed 's/    /\t/g' "$1" > "$2"
