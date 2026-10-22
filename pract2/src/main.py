@@ -5,6 +5,7 @@ import sys
 
 import apt_repo
 import graph_file
+from graph import DependencyGraph
 
 MIN_DEPTH = 1
 DEFAULT_DEPTH = 3
@@ -89,26 +90,25 @@ def validate(args):
     return [error for error in checks if error]
 
 
-def get_dependencies(args):
+def dependency_source(args):
     if args.test_mode:
-        return graph_file.direct_dependencies(args.repo, args.package)
-    return apt_repo.direct_dependencies(args.repo, args.package,
-                                        args.version)
+        return graph_file.dependency_source(args.repo, args.package)
+    return apt_repo.dependency_source(args.repo, args.package, args.version)
 
 
-def format_dependency(dep):
-    name, op, version = dep
-    return f"{name} ({op} {version})" if op else name
-
-
-def print_dependencies(args, groups):
+def print_graph(args, graph):
     title = args.package if args.test_mode else \
         f"{args.package} {args.version}"
-    print(f"Прямые зависимости {title}:")
-    if not groups:
-        print("  (нет зависимостей)")
-    for group in groups:
-        print("  " + " | ".join(format_dependency(dep) for dep in group))
+    print(f"Граф зависимостей {title} (глубина {args.max_depth}):")
+    for name in graph.nodes():
+        if name in graph.missing:
+            print(f"  {name}: не найден в репозитории")
+        elif name in graph.edges:
+            deps = ", ".join(graph.edges[name]) or "(нет зависимостей)"
+            print(f"  {name} -> {deps}")
+    print(f"Пакетов: {len(graph.depths)}, связей: {graph.edge_count()}")
+    for cycle in graph.cycles:
+        print("Цикл: " + " -> ".join(cycle))
 
 
 def fail(messages):
@@ -123,10 +123,11 @@ def main(argv=None):
     if errors:
         fail(errors)
     try:
-        groups = get_dependencies(args)
+        get_deps = dependency_source(args)
     except apt_repo.RepoError as err:
         fail([str(err)])
-    print_dependencies(args, groups)
+    graph = DependencyGraph(get_deps, args.max_depth).build(args.package)
+    print_graph(args, graph)
 
 
 if __name__ == "__main__":

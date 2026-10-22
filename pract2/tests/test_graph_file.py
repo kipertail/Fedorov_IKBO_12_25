@@ -1,7 +1,7 @@
 import pytest
 
 from apt_repo import RepoError
-from graph_file import direct_dependencies, load_graph
+from graph_file import dependency_source, load_graph
 
 
 @pytest.fixture
@@ -15,18 +15,16 @@ def test_load_graph(graph_path):
     assert load_graph(graph_path) == {"A": ["B", "C"], "B": ["C"], "C": []}
 
 
-def test_direct_dependencies(graph_path):
-    assert direct_dependencies(graph_path, "A") == [[("B", "", "")],
-                                                    [("C", "", "")]]
+def test_dependency_source(graph_path):
+    get_deps = dependency_source(graph_path, "A")
+    assert get_deps("A") == ["B", "C"]
+    assert get_deps("C") == []
+    assert get_deps("Z") is None
 
 
-def test_no_dependencies(graph_path):
-    assert direct_dependencies(graph_path, "C") == []
-
-
-def test_unknown_package(graph_path):
+def test_unknown_root(graph_path):
     with pytest.raises(RepoError, match="не найден"):
-        direct_dependencies(graph_path, "Z")
+        dependency_source(graph_path, "Z")
 
 
 def test_bad_line(tmp_path):

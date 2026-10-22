@@ -24,8 +24,8 @@ def load_graph(path):
     return graph
 
 
-def direct_dependencies(path, name):
+def dependency_source(path, root):
     graph = load_graph(path)
-    if name not in graph:
-        raise RepoError(f"пакет '{name}' не найден в тестовом репозитории")
-    return [[(dep, "", "")] for dep in graph[name]]
+    if root not in graph:
+        raise RepoError(f"пакет '{root}' не найден в тестовом репозитории")
+    return graph.get
