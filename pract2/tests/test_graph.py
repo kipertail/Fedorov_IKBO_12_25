@@ -1,4 +1,4 @@
-from graph import DependencyGraph
+from graph import DependencyGraph, reverse_graph
 
 
 def build(edges, root="A", max_depth=10):
@@ -61,3 +61,25 @@ def test_missing_package():
 def test_nodes_sorted_by_depth():
     graph = build({"A": ["C", "B"], "B": [], "C": []})
     assert graph.nodes() == ["A", "B", "C"]
+
+
+def test_reverse_graph():
+    reverse = reverse_graph({"A": ["B", "C"], "B": ["C"], "C": []})
+    assert reverse == {"A": [], "B": ["A"], "C": ["A", "B"]}
+
+
+def test_reverse_graph_undefined_dependency():
+    reverse = reverse_graph({"A": ["X"]})
+    assert reverse == {"A": [], "X": ["A"]}
+
+
+def test_reverse_traversal_uses_same_dfs():
+    reverse = reverse_graph({"A": ["B"], "B": ["C"], "D": ["C"], "C": []})
+    graph = DependencyGraph(reverse.get, 10).build("C")
+    assert graph.edges == {"C": ["B", "D"], "B": ["A"], "A": [], "D": []}
+
+
+def test_reverse_cycle():
+    reverse = reverse_graph({"A": ["B"], "B": ["C"], "C": ["A"]})
+    graph = DependencyGraph(reverse.get, 10).build("A")
+    assert graph.cycles == [["A", "C", "B", "A"]]

@@ -40,3 +40,13 @@ class DependencyGraph:
 
     def edge_count(self):
         return sum(len(deps) for deps in self.edges.values())
+
+
+def reverse_graph(graph):
+    reverse = {name: [] for name in graph}
+    for name, deps in graph.items():
+        for dep in deps:
+            users = reverse.setdefault(dep, [])
+            if name not in users:
+                users.append(name)
+    return reverse

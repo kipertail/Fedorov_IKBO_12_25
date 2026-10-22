@@ -3,6 +3,8 @@ import re
 import urllib.error
 import urllib.request
 
+from graph import reverse_graph
+
 DIST = "noble"
 COMPONENT = "main"
 ARCH = "amd64"
@@ -121,8 +123,12 @@ class AptIndex:
         return names
 
 
+def load_index(repo):
+    return AptIndex(parse_packages(download_index(packages_url(repo))))
+
+
 def dependency_source(repo, root, version):
-    index = AptIndex(parse_packages(download_index(packages_url(repo))))
+    index = load_index(repo)
     root_stanza = find_package(index.stanzas, root, version)
 
     def get_deps(name):
@@ -132,3 +138,11 @@ def dependency_source(repo, root, version):
         return index.dependency_names(stanza) if stanza else None
 
     return get_deps
+
+
+def reverse_dependency_source(repo, root, version):
+    index = load_index(repo)
+    find_package(index.stanzas, root, version)
+    forward = {name: index.dependency_names(stanza)
+               for name, stanza in index.packages.items()}
+    return reverse_graph(forward).get

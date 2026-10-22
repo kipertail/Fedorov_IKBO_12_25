@@ -32,6 +32,8 @@ def parse_args(argv=None):
                         help="имя файла с изображением графа")
     parser.add_argument("--max-depth", type=int, default=DEFAULT_DEPTH,
                         help="максимальная глубина анализа зависимостей")
+    parser.add_argument("--reverse", action="store_true",
+                        help="вывести обратные зависимости пакета")
     return parser.parse_args(argv)
 
 
@@ -91,24 +93,32 @@ def validate(args):
 
 
 def dependency_source(args):
+    if args.test_mode and args.reverse:
+        return graph_file.reverse_dependency_source(args.repo, args.package)
     if args.test_mode:
         return graph_file.dependency_source(args.repo, args.package)
+    if args.reverse:
+        return apt_repo.reverse_dependency_source(args.repo, args.package,
+                                                  args.version)
     return apt_repo.dependency_source(args.repo, args.package, args.version)
 
 
 def print_graph(args, graph):
     title = args.package if args.test_mode else \
         f"{args.package} {args.version}"
-    print(f"Граф зависимостей {title} (глубина {args.max_depth}):")
+    kind = "Обратные зависимости" if args.reverse else "Граф зависимостей"
+    arrow = "<-" if args.reverse else "->"
+    print(f"{kind} {title} (глубина {args.max_depth}):")
     for name in graph.nodes():
         if name in graph.missing:
             print(f"  {name}: не найден в репозитории")
         elif name in graph.edges:
-            deps = ", ".join(graph.edges[name]) or "(нет зависимостей)"
-            print(f"  {name} -> {deps}")
+            deps = ", ".join(graph.edges[name]) or "(нет)"
+            print(f"  {name} {arrow} {deps}")
     print(f"Пакетов: {len(graph.depths)}, связей: {graph.edge_count()}")
     for cycle in graph.cycles:
-        print("Цикл: " + " -> ".join(cycle))
+        path = cycle[::-1] if args.reverse else cycle
+        print("Цикл: " + " -> ".join(path))
 
 
 def fail(messages):

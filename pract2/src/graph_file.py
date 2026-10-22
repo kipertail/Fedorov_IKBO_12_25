@@ -1,4 +1,5 @@
 from apt_repo import RepoError
+from graph import reverse_graph
 
 
 def parse_graph_line(line, num):
@@ -29,3 +30,10 @@ def dependency_source(path, root):
     if root not in graph:
         raise RepoError(f"пакет '{root}' не найден в тестовом репозитории")
     return graph.get
+
+
+def reverse_dependency_source(path, root):
+    reverse = reverse_graph(load_graph(path))
+    if root not in reverse:
+        raise RepoError(f"пакет '{root}' не найден в тестовом репозитории")
+    return reverse.get
