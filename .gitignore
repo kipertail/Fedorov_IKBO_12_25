@@ -12,3 +12,7 @@ __pycache__/
 *.tar
 *.zip
 *.pdf
+
+# Результаты запуска с параметрами по умолчанию
+graph.svg
+graph.dot

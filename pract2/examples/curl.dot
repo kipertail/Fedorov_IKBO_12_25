@@ -1,0 +1,36 @@
+digraph dependencies {
+    rankdir=LR;
+    node [shape=box, style=rounded, fontname="Helvetica"];
+    "curl" [style="rounded,filled", fillcolor="lightblue"];
+    "libc6";
+    "libcurl4t64";
+    "zlib1g";
+    "libbrotli1";
+    "libgcc-s1";
+    "libgssapi-krb5-2";
+    "libidn2-0";
+    "libldap2";
+    "libnghttp2-14";
+    "libpsl5t64";
+    "librtmp1";
+    "libssh-4";
+    "libssl3t64";
+    "libzstd1";
+    "curl" -> "libc6";
+    "curl" -> "libcurl4t64";
+    "curl" -> "zlib1g";
+    "libc6" -> "libgcc-s1";
+    "libcurl4t64" -> "libbrotli1";
+    "libcurl4t64" -> "libc6";
+    "libcurl4t64" -> "libgssapi-krb5-2";
+    "libcurl4t64" -> "libidn2-0";
+    "libcurl4t64" -> "libldap2";
+    "libcurl4t64" -> "libnghttp2-14";
+    "libcurl4t64" -> "libpsl5t64";
+    "libcurl4t64" -> "librtmp1";
+    "libcurl4t64" -> "libssh-4";
+    "libcurl4t64" -> "libssl3t64";
+    "libcurl4t64" -> "libzstd1";
+    "libcurl4t64" -> "zlib1g";
+    "zlib1g" -> "libc6";
+}
