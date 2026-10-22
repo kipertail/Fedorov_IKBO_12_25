@@ -87,7 +87,48 @@ def stanza_dependencies(stanza):
     return groups
 
 
-def direct_dependencies(repo, name, version):
-    text = download_index(packages_url(repo))
-    stanza = find_package(parse_packages(text), name, version)
-    return stanza_dependencies(stanza)
+class AptIndex:
+
+    def __init__(self, stanzas):
+        self.stanzas = stanzas
+        self.packages = {}
+        self.providers = {}
+        for stanza in stanzas:
+            name = stanza.get("Package")
+            self.packages.setdefault(name, stanza)
+            for group in parse_depends(stanza.get("Provides", "")):
+                self.providers.setdefault(group[0][0], []).append(name)
+
+    def resolve(self, name):
+        if name in self.packages:
+            return name
+        providers = self.providers.get(name)
+        return providers[0] if providers else None
+
+    def choose(self, group):
+        for dep_name, _, _ in group:
+            real = self.resolve(dep_name)
+            if real:
+                return real
+        return group[0][0]
+
+    def dependency_names(self, stanza):
+        names = []
+        for group in stanza_dependencies(stanza):
+            real = self.choose(group)
+            if real not in names:
+                names.append(real)
+        return names
+
+
+def dependency_source(repo, root, version):
+    index = AptIndex(parse_packages(download_index(packages_url(repo))))
+    root_stanza = find_package(index.stanzas, root, version)
+
+    def get_deps(name):
+        if name == root:
+            return index.dependency_names(root_stanza)
+        stanza = index.packages.get(name)
+        return index.dependency_names(stanza) if stanza else None
+
+    return get_deps
