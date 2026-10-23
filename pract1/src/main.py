@@ -2,8 +2,11 @@ import argparse
 import os
 import sys
 
+from vfs import VFS, VFSError
+
 DEFAULT_VFS_NAME = "vfs"
 CONFIG = {}
+STATE = {"vfs": None}
 MAX_EXIT_ARGS = 1
 
 
@@ -41,6 +44,15 @@ def print_config():
         print(f"[config] {key} = {value}")
 
 
+def load_vfs():
+    if not CONFIG["vfs_path"]:
+        return
+    try:
+        STATE["vfs"] = VFS.from_file(CONFIG["vfs_name"], CONFIG["vfs_path"])
+    except VFSError as err:
+        error(f"[vfs] ошибка загрузки VFS: {err}")
+
+
 def prompt():
     return f"{CONFIG['vfs_name']}$ "
 
@@ -51,6 +63,21 @@ def cmd_conf_dump(args):
         return False
     for key, value in CONFIG.items():
         print(f"{key}={value}")
+    return True
+
+
+def cmd_vfs_info(args):
+    if args:
+        error("vfs-info: too many arguments")
+        return False
+    vfs = STATE["vfs"]
+    if vfs is None:
+        error("vfs-info: VFS не загружена")
+        return False
+    print(f"name: {vfs.name}")
+    print(f"sha256: {vfs.sha256}")
+    files, dirs = vfs.count()
+    print(f"files: {files}, dirs: {dirs}")
     return True
 
 
@@ -83,6 +110,7 @@ COMMANDS = {
     "cd": cmd_cd,
     "exit": cmd_exit,
     "conf-dump": cmd_conf_dump,
+    "vfs-info": cmd_vfs_info,
 }
 
 
@@ -131,6 +159,7 @@ def main():
     args = parse_cli_args()
     build_config(args)
     print_config()
+    load_vfs()
     if CONFIG["script_path"]:
         run_script(CONFIG["script_path"])
     repl()
