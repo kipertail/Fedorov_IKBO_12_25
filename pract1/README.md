@@ -26,6 +26,17 @@ UNIX-подобной ОС. Пользователь вводит команды
 - служебная команда `conf-dump`;
 - скрипты ОС для тестирования параметров командной строки.
 
+**Этап 3. VFS**:
+
+- источник VFS — ZIP-архив, все операции выполняются в памяти,
+  архив не распаковывается и не изменяется;
+- содержимое двоичных файлов хранится в памяти в формате base64;
+- сообщения об ошибках загрузки VFS (файл не найден, неверный формат);
+- служебная команда `vfs-info` (имя VFS и хеш SHA-256 её данных);
+- скрипты ОС для проверки разных вариантов VFS: минимальная,
+  несколько файлов, не менее 3 уровней файлов и папок;
+- стартовый скрипт `scripts/stage3.txt` для проверки всех команд.
+
 ## Структура проекта
 
 ```
@@ -33,34 +44,87 @@ pract1/
 ├── README.md                  — документация
 ├── run.sh                     — скрипт запуска
 ├── src/
-│   └── main.py                — исходный код эмулятора
+│   ├── main.py                — исходный код эмулятора
+│   └── vfs.py                 — виртуальная файловая система
 ├── scripts/
 │   ├── start.txt              — стартовый скрипт с корректными командами
-│   └── start_errors.txt       — стартовый скрипт с ошибками
+│   ├── start_errors.txt       — стартовый скрипт с ошибками
+│   └── stage3.txt             — стартовый скрипт этапа 3
+├── data/                      — собранные VFS (создаётся make_vfs.sh)
 └── tests/
+    ├── conftest.py            — настройка путей импорта для pytest
     ├── test_main.py           — тесты парсера
+    ├── test_vfs.py            — тесты VFS
+    ├── make_vfs.sh            — сборка ZIP-архивов VFS в data/
+    ├── vfs/                   — исходные деревья тестовых VFS
+    │   ├── minimal/           — один файл
+    │   ├── multi/             — несколько файлов
+    │   └── deep/              — не менее 3 уровней файлов и папок
     ├── test_no_args.sh        — запуск без параметров
     ├── test_vfs.sh            — только --vfs
     ├── test_script.sh         — только --script
     ├── test_all.sh            — оба параметра
     ├── test_script_errors.sh  — скрипт с ошибками
-    └── test_bad_script.sh     — несуществующий скрипт
+    ├── test_bad_script.sh     — несуществующий скрипт
+    ├── test_vfs_minimal.sh    — минимальная VFS
+    ├── test_vfs_multi.sh      — VFS с несколькими файлами
+    ├── test_vfs_deep.sh       — VFS с вложенными папками
+    ├── test_vfs_errors.sh     — ошибки загрузки VFS
+    └── test_stage3.sh         — стартовый скрипт этапа 3
 ```
 
 ## Параметры командной строки
 
 | Параметр | Описание |
 |---|---|
-| `--vfs PATH` | Путь к физическому расположению VFS. Имя файла без расширения используется как имя VFS в приглашении. По умолчанию имя `vfs` |
+| `--vfs PATH` | Путь к ZIP-архиву с VFS. Имя файла без расширения используется как имя VFS в приглашении. По умолчанию имя `vfs`, VFS не загружается |
 | `--script PATH` | Путь к стартовому скрипту, который выполняется перед интерактивным режимом |
 | `-h`, `--help` | Справка по параметрам |
 
 При запуске все параметры выводятся в отладочном формате:
 
 ```
-[config] vfs_path = data/myfs.zip
-[config] script_path = scripts/start.txt
-[config] vfs_name = myfs
+[config] vfs_path = data/deep.zip
+[config] script_path = scripts/stage3.txt
+[config] vfs_name = deep
+```
+
+## Виртуальная файловая система
+
+Источником VFS служит ZIP-архив. При запуске архив целиком читается
+в память, и по списку его записей строится дерево из папок (`VFSDir`)
+и файлов (`VFSFile`). На диск ничего не распаковывается, исходный
+архив не изменяется.
+
+Содержимое файлов хранится в памяти: текстовые файлы (UTF-8) — как
+строка, двоичные — в кодировке base64 (флаг `binary = True`).
+Промежуточные папки, которых нет в архиве отдельными записями,
+создаются автоматически, пустые папки сохраняются.
+
+Хеш SHA-256 вычисляется по байтам всего ZIP-архива.
+
+Если VFS не удалось загрузить, выводится сообщение об ошибке,
+и эмулятор продолжает работу без VFS.
+
+### Тестовые VFS
+
+Архивы в репозитории не хранятся (`*.zip` в `.gitignore`).
+Исходные деревья лежат в `tests/vfs/`, а скрипт `tests/make_vfs.sh`
+собирает из них архивы в папку `data/`:
+
+| Архив | Содержимое |
+|---|---|
+| `data/minimal.zip` | один файл `readme.txt` |
+| `data/multi.zip` | четыре файла в корне |
+| `data/deep.zip` | вложенность до 4 уровней (`home/user/docs/drafts/todo.txt`), двоичный файл `home/user/image.bin`, пустая папка `tmp` |
+| `data/broken.zip` | текстовый файл, не являющийся ZIP-архивом |
+
+Двоичный файл и пустая папка создаются при сборке, чтобы не хранить
+их в репозитории. Архивы содержат время сборки, поэтому хеш SHA-256
+меняется после каждого запуска `make_vfs.sh`.
+
+```sh
+sh tests/make_vfs.sh
 ```
 
 ## Стартовый скрипт
@@ -83,15 +147,29 @@ pract1/
 | `parse_cli_args()` | Разбирает параметры командной строки (`argparse`) |
 | `build_config(args)` | Заполняет словарь `CONFIG`: `vfs_path`, `script_path`, `vfs_name` |
 | `print_config()` | Отладочный вывод параметров при запуске |
+| `load_vfs()` | Загружает VFS из `vfs_path` в `STATE["vfs"]`, при ошибке выводит сообщение |
 | `prompt()` | Возвращает строку приглашения с именем VFS |
 | `cmd_ls(args)` | Заглушка `ls`: выводит имя команды и аргументы |
 | `cmd_cd(args)` | Заглушка `cd`: выводит имя команды и аргументы |
 | `cmd_exit(args)` | Завершает работу с указанным кодом возврата |
 | `cmd_conf_dump(args)` | Выводит параметры в формате `ключ=значение` |
+| `cmd_vfs_info(args)` | Выводит имя VFS, хеш SHA-256 и число файлов и папок |
 | `execute(command, args)` | Ищет команду в таблице `COMMANDS` и выполняет её. Возвращает `True` при успехе, `False` при ошибке |
 | `run_script(path)` | Выполняет стартовый скрипт |
 | `repl()` | Интерактивный цикл ввода команд |
-| `main()` | Точка входа: параметры, конфигурация, скрипт, REPL |
+| `main()` | Точка входа: параметры, конфигурация, VFS, скрипт, REPL |
+
+Модуль `vfs.py`:
+
+| Класс / метод | Описание |
+|---|---|
+| `VFSError` | Исключение при ошибке загрузки VFS |
+| `VFSFile(name, data)` | Файл VFS: `content` — текст или base64, `binary` — признак двоичных данных |
+| `VFSDir(name)` | Папка VFS: `children` — словарь вложенных узлов |
+| `VFS(name, data)` | Строит дерево VFS из байтов ZIP-архива в памяти и вычисляет `sha256` |
+| `VFS.from_file(name, path)` | Читает архив с диска и создаёт VFS |
+| `VFS.count()` | Возвращает число файлов и папок `(files, dirs)` |
+| `VFS.get(path)` | Возвращает узел по пути или `None` |
 
 ## Команды
 
@@ -101,6 +179,7 @@ pract1/
 | `cd [args...]` | Заглушка: выводит `cd` и список аргументов |
 | `exit [код]` | Выход из эмулятора с кодом возврата (по умолчанию 0) |
 | `conf-dump` | Вывод параметров эмулятора в формате `ключ=значение` |
+| `vfs-info` | Имя VFS, хеш SHA-256 её данных, число файлов и папок |
 
 ### Обработка ошибок
 
@@ -108,6 +187,10 @@ pract1/
 |---|---|
 | Неизвестная команда | `<команда>: command not found` |
 | `conf-dump` с аргументами | `conf-dump: too many arguments` |
+| `vfs-info` с аргументами | `vfs-info: too many arguments` |
+| `vfs-info` без загруженной VFS | `vfs-info: VFS не загружена` |
+| Файл VFS не найден | `[vfs] ошибка загрузки VFS: не удалось открыть <путь>: ...`, работа без VFS |
+| Файл VFS не является ZIP-архивом | `[vfs] ошибка загрузки VFS: неверный формат: ...`, работа без VFS |
 | Стартовый скрипт не найден | `[script] не удалось открыть <путь>: ...`, переход в интерактивный режим |
 | Ошибка в строке скрипта | `[script] ошибка в строке N: ...`, строка пропускается |
 | `exit` с нечисловым аргументом | `exit: <арг>: numeric argument required`, выход с кодом 2 |
@@ -135,7 +218,8 @@ python3 src/main.py [--vfs PATH] [--script PATH]
 Пример:
 
 ```sh
-./run.sh --vfs data/myfs.zip --script scripts/start.txt
+sh tests/make_vfs.sh
+./run.sh --vfs data/deep.zip --script scripts/stage3.txt
 ```
 
 ## Тесты
@@ -149,36 +233,71 @@ python3 -m pytest
 
 Команды выполняются из папки `pract1`.
 
-Скрипты ОС для проверки параметров командной строки:
+Скрипты ОС для проверки параметров командной строки и VFS
+(каждый сам собирает архивы через `make_vfs.sh`):
 
 ```sh
-for t in tests/*.sh; do sh "$t"; done
+for t in tests/test_*.sh; do sh "$t"; done
 ```
 
 ## Пример использования
 
-Стартовый скрипт с ошибками:
+Стартовый скрипт этапа 3 (`scripts/stage3.txt`):
 
 ```
-$ ./run.sh --vfs data/myfs.zip --script scripts/start_errors.txt
-[config] vfs_path = data/myfs.zip
-[config] script_path = scripts/start_errors.txt
-[config] vfs_name = myfs
-myfs$ ls -a
-ls ['-a']
-myfs$ foo bar
-foo: command not found
-[script] ошибка в строке 3: foo bar
-myfs$ cd /tmp
-cd ['/tmp']
-myfs$ conf-dump extra
+$ sh tests/make_vfs.sh
+$ ./run.sh --vfs data/deep.zip --script scripts/stage3.txt
+[config] vfs_path = data/deep.zip
+[config] script_path = scripts/stage3.txt
+[config] vfs_name = deep
+deep$ vfs-info
+name: deep
+sha256: d9631bc6c9d42495abb55e50cff0dc0f618b133a404386b4e95cc45c40eb4a93
+files: 6, dirs: 9
+deep$ vfs-info extra
+vfs-info: too many arguments
+[script] ошибка в строке 5: vfs-info extra
+deep$ ls
+ls []
+deep$ ls -l /home/user
+ls ['-l', '/home/user']
+deep$ cd /home/user/docs
+cd ['/home/user/docs']
+deep$ cd ..
+cd ['..']
+deep$ conf-dump
+vfs_path=data/deep.zip
+script_path=scripts/stage3.txt
+vfs_name=deep
+deep$ conf-dump extra
 conf-dump: too many arguments
-[script] ошибка в строке 5: conf-dump extra
-myfs$ conf-dump
-vfs_path=data/myfs.zip
-script_path=scripts/start_errors.txt
-vfs_name=myfs
-myfs$ exit
+[script] ошибка в строке 14: conf-dump extra
+deep$ cat /etc/hosts
+cat: command not found
+[script] ошибка в строке 16: cat /etc/hosts
+deep$ exit 1 2
+exit: too many arguments
+[script] ошибка в строке 18: exit 1 2
+deep$ exit
+```
+
+Ошибки загрузки VFS:
+
+```
+$ ./run.sh --vfs data/missing.zip
+[config] vfs_path = data/missing.zip
+[config] script_path = None
+[config] vfs_name = missing
+[vfs] ошибка загрузки VFS: не удалось открыть data/missing.zip: No such file or directory
+missing$ vfs-info
+vfs-info: VFS не загружена
+missing$ exit
+$ ./run.sh --vfs data/broken.zip
+[config] vfs_path = data/broken.zip
+[config] script_path = None
+[config] vfs_name = broken
+[vfs] ошибка загрузки VFS: неверный формат: File is not a zip file
+broken$ exit
 ```
 
 Интерактивный режим:
