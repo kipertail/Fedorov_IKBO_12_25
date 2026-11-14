@@ -9,7 +9,16 @@ DIST = "noble"
 COMPONENT = "main"
 ARCH = "amd64"
 TIMEOUT = 60
+ENCODING = "utf-8"
+PACKAGE_FIELD = "Package"
+VERSION_FIELD = "Version"
+PROVIDES_FIELD = "Provides"
 DEPENDS_FIELDS = ("Pre-Depends", "Depends")
+FIELD_SEPARATOR = ":"
+STANZA_SEPARATOR = "\n\n"
+CONTINUATION_PREFIXES = (" ", "\t")
+DEPENDENCY_SEPARATOR = ","
+ALTERNATIVE_SEPARATOR = "|"
 DEP_RE = re.compile(
     r"^(?P<name>[^\s(:\[]+)(?::\S+)?\s*"
     r"(?:\((?P<op>[<>=]+)\s*(?P<version>[^)]+)\))?")
@@ -33,7 +42,7 @@ def download_index(url):
     except OSError as err:
         raise RepoError(f"{url}: не удалось подключиться: {err}") from err
     try:
-        return gzip.decompress(data).decode("utf-8")
+        return gzip.decompress(data).decode(ENCODING)
     except (OSError, EOFError, UnicodeDecodeError) as err:
         raise RepoError(f"{url}: неверный формат индекса пакетов") from err
 
@@ -42,25 +51,27 @@ def parse_stanza(block):
     fields = {}
     key = None
     for line in block.splitlines():
-        if line.startswith((" ", "\t")) and key:
+        if line.startswith(CONTINUATION_PREFIXES) and key:
             fields[key] += "\n" + line.strip()
-        elif ":" in line:
-            key, value = line.split(":", 1)
+        elif FIELD_SEPARATOR in line:
+            key, value = line.split(FIELD_SEPARATOR, 1)
             fields[key] = value.strip()
     return fields
 
 
 def parse_packages(text):
-    return [parse_stanza(block) for block in text.split("\n\n")
+    return [parse_stanza(block) for block in text.split(STANZA_SEPARATOR)
             if block.strip()]
 
 
 def find_package(stanzas, name, version):
-    versions = [s.get("Version") for s in stanzas if s.get("Package") == name]
+    versions = [s.get(VERSION_FIELD) for s in stanzas
+                if s.get(PACKAGE_FIELD) == name]
     if not versions:
         raise RepoError(f"пакет '{name}' не найден в репозитории")
     for stanza in stanzas:
-        if stanza.get("Package") == name and stanza.get("Version") == version:
+        if (stanza.get(PACKAGE_FIELD) == name
+                and stanza.get(VERSION_FIELD) == version):
             return stanza
     raise RepoError(f"версия '{version}' пакета '{name}' не найдена, "
                     f"доступные версии: {', '.join(versions)}")
@@ -76,9 +87,10 @@ def parse_dependency(item):
 
 def parse_depends(value):
     groups = []
-    for group in value.split(","):
+    for group in value.split(DEPENDENCY_SEPARATOR):
         if group.strip():
-            groups.append([parse_dependency(alt) for alt in group.split("|")])
+            groups.append([parse_dependency(alt)
+                           for alt in group.split(ALTERNATIVE_SEPARATOR)])
     return groups
 
 
@@ -96,9 +108,9 @@ class AptIndex:
         self.packages = {}
         self.providers = {}
         for stanza in stanzas:
-            name = stanza.get("Package")
+            name = stanza.get(PACKAGE_FIELD)
             self.packages.setdefault(name, stanza)
-            for group in parse_depends(stanza.get("Provides", "")):
+            for group in parse_depends(stanza.get(PROVIDES_FIELD, "")):
                 self.providers.setdefault(group[0][0], []).append(name)
 
     def resolve(self, name):

@@ -1,24 +1,28 @@
 from apt_repo import RepoError
 from graph import reverse_graph
 
+ENCODING = "utf-8"
+DEPENDENCY_SEPARATOR = ":"
+COMMENT_PREFIX = "#"
+
 
 def parse_graph_line(line, num):
-    if ":" not in line:
+    if DEPENDENCY_SEPARATOR not in line:
         raise RepoError(f"строка {num}: ожидается формат 'ПАКЕТ: ЗАВИСИМОСТИ'")
-    name, deps = line.split(":", 1)
+    name, deps = line.split(DEPENDENCY_SEPARATOR, 1)
     return name.strip(), deps.split()
 
 
 def load_graph(path):
     graph = {}
     try:
-        with open(path, encoding="utf-8") as file:
+        with open(path, encoding=ENCODING) as file:
             lines = file.readlines()
     except OSError as err:
         raise RepoError(f"{path}: {err.strerror}") from err
     for num, line in enumerate(lines, start=1):
         line = line.strip()
-        if not line or line.startswith("#"):
+        if not line or line.startswith(COMMENT_PREFIX):
             continue
         name, deps = parse_graph_line(line, num)
         graph[name] = deps

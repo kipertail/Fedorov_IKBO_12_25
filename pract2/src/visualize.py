@@ -2,6 +2,11 @@ import os
 import subprocess
 
 DOT_EXT = ".dot"
+ENCODING = "utf-8"
+DOT_COMMAND = "dot"
+OUTPUT_FORMAT = "svg"
+GRAPH_DIRECTION = "LR"
+NODE_STYLE = 'shape=box, style=rounded, fontname="Helvetica"'
 ROOT_STYLE = 'style="rounded,filled", fillcolor="lightblue"'
 MISSING_STYLE = 'style="rounded,dashed", color="red"'
 CYCLE_STYLE = 'color="red", penwidth=2'
@@ -40,8 +45,8 @@ def node_line(name, root, graph):
 def to_dot(graph, root, reverse=False):
     lines = [
         "digraph dependencies {",
-        "    rankdir=LR;",
-        '    node [shape=box, style=rounded, fontname="Helvetica"];',
+        f"    rankdir={GRAPH_DIRECTION};",
+        f"    node [{NODE_STYLE}];",
     ]
     lines.extend(node_line(name, root, graph) for name in graph.nodes())
     in_cycle = cycle_edges(graph, reverse)
@@ -58,7 +63,8 @@ def dot_path(output):
 
 def render_svg(dot_text, output):
     try:
-        subprocess.run(["dot", "-Tsvg", "-o", output], input=dot_text,
+        command = [DOT_COMMAND, f"-T{OUTPUT_FORMAT}", "-o", output]
+        subprocess.run(command, input=dot_text,
                        text=True, capture_output=True, check=True)
     except FileNotFoundError as err:
         raise VisualizationError(
@@ -71,7 +77,7 @@ def render_svg(dot_text, output):
 
 def save(graph, root, output, reverse=False):
     dot_text = to_dot(graph, root, reverse)
-    with open(dot_path(output), "w", encoding="utf-8") as file:
+    with open(dot_path(output), "w", encoding=ENCODING) as file:
         file.write(dot_text)
     render_svg(dot_text, output)
     return dot_path(output)

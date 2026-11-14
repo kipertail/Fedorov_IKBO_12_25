@@ -10,8 +10,9 @@ from graph import DependencyGraph
 
 MIN_DEPTH = 1
 DEFAULT_DEPTH = 3
-DEFAULT_OUTPUT = "graph.svg"
 OUTPUT_EXT = ".svg"
+DEFAULT_OUTPUT = f"graph{OUTPUT_EXT}"
+EXIT_FAILURE = 1
 URL_PREFIXES = ("http://", "https://")
 PACKAGE_RE = re.compile(r"^[a-z0-9][a-z0-9+.\-]+$")
 TEST_PACKAGE_RE = re.compile(r"^[A-Z]+$")
@@ -69,7 +70,7 @@ def validate_version(version, test_mode):
 
 def validate_output(output):
     if not output.endswith(OUTPUT_EXT):
-        return f"output: '{output}': ожидается файл с расширением .svg"
+        return f"output: '{output}': ожидается файл с расширением {OUTPUT_EXT}"
     folder = os.path.dirname(output)
     if folder and not os.path.isdir(folder):
         return f"output: '{output}': папка '{folder}' не существует"
@@ -125,7 +126,7 @@ def print_graph(args, graph):
 def fail(messages):
     for message in messages:
         print(f"Ошибка: {message}", file=sys.stderr)
-    sys.exit(1)
+    sys.exit(EXIT_FAILURE)
 
 
 def main(argv=None):

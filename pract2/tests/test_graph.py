@@ -1,5 +1,7 @@
 from graph import DependencyGraph, reverse_graph
 
+EXPECTED_CYCLE_EDGE_COUNT = 3
+
 
 def build(edges, root="A", max_depth=10):
     return DependencyGraph(edges.get, max_depth).build(root)
@@ -27,7 +29,7 @@ def test_max_depth_one():
 def test_cycle_detected():
     graph = build({"A": ["B"], "B": ["C"], "C": ["A"]})
     assert graph.cycles == [["A", "B", "C", "A"]]
-    assert graph.edge_count() == 3
+    assert graph.edge_count() == EXPECTED_CYCLE_EDGE_COUNT
 
 
 def test_self_loop():

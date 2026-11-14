@@ -4,6 +4,8 @@ from apt_repo import (AptIndex, RepoError, find_package, packages_url,
                       parse_depends, parse_packages, parse_stanza,
                       stanza_dependencies)
 
+EXPECTED_PACKAGE_COUNT = 3
+
 SAMPLE = """\
 Package: curl
 Version: 8.5.0-2ubuntu10
@@ -34,7 +36,7 @@ def test_parse_stanza_continuation():
 
 
 def test_parse_packages_count():
-    assert len(parse_packages(SAMPLE)) == 3
+    assert len(parse_packages(SAMPLE)) == EXPECTED_PACKAGE_COUNT
 
 
 def test_find_package_by_version():
